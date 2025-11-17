@@ -97,4 +97,5 @@ PostSchema.methods.incrementViewCount = function () {
   return this.save();
 };
 
-module.exports = mongoose.model('Post', PostSchema); 
+const Post = mongoose.model("Post", PostSchema)
+module.exports = Post; 
