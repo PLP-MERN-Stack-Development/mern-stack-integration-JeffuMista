@@ -1,34 +1,26 @@
-const jwt = require("jsonwebtoken");
+// Refactored for Clerk authentication
+const { requireAuth } = require("@clerk/clerk-sdk-node");
 const User = require("../models/User");
 
-exports.protect = async (req, res, next) => {
-  let token;
+// Protect middleware for routes
+exports.protect = requireAuth();
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  }
-
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
-  }
-
+// Optional admin middleware
+exports.admin = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Not authorized, token failed" });
-  }
-};
+    // Example: fetch user from DB using Clerk userId
+    const user = await User.findOne({ clerkId: req.auth.userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-// Optional: Admin-only middleware
-exports.admin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res.status(403).json({ message: "Admin access required" });
+    if (user.role === "admin") {
+      next();
+    } else {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };

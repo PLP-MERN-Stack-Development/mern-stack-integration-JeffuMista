@@ -8,6 +8,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 const { connectDB } = require("./config/db");
 
+
 // Import routes
 const postRoutes = require("./routes/PostsRoute");
 const categoryRoutes = require("./routes/CategoriesRoute");

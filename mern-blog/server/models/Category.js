@@ -4,35 +4,20 @@ const CategorySchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Please provide a category name"],
+      required: [true, "Please provide category name"],
+      unique: true,
       trim: true,
-      unique: true,
-      maxlength: 50,
-    },
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
     },
     description: {
       type: String,
-      maxlength: 200,
+      trim: true,
+    },
+    createdBy: {
+      type: String, // Clerk user ID
+      required: true,
     },
   },
   { timestamps: true }
 );
 
-// Auto-generate slug from name
-CategorySchema.pre("save", function (next) {
-  if (!this.isModified("name")) return next();
-
-  this.slug = this.name
-    .toLowerCase()
-    .replace(/[^\w ]+/g, "")
-    .replace(/ +/g, "-");
-
-  next();
-});
-
-const Category = mongoose.model("Category", CategorySchema)
-module.exports = Category
+module.exports = mongoose.model("Category", CategorySchema);
