@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from "react";
-import { DashboardProvider } from "../context/DashboardContext";
+import { DashboardProvider } from "../context/DashboardProvider";
 import CreateCategoryModal from "../components/CreateCategoryModal";
 import { useBlogsApi } from "../services/api";
 
