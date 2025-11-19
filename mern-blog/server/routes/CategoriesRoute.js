@@ -1,10 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const Category = require("../models/Category");
-const requireAuth = require("../middleware/requireAuth");
+const { protect, admin } = require("../middleware/clerkAuth");
 
-// create category
-router.post("/", requireAuth, async (req, res) => {
+// Get all categories (public)
+router.get("/", async (req, res, next) => {
+  try {
+    const categories = await Category.find().sort({ createdAt: -1 });
+    res.json(categories);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Create category (authenticated)
+router.post("/", protect, async (req, res, next) => {
   try {
     const { name } = req.body;
 
@@ -13,29 +23,46 @@ router.post("/", requireAuth, async (req, res) => {
       userId: req.auth.userId,
     });
 
-    res.json(category);
+    res.status(201).json(category);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-// delete category (creator or admin)
-router.delete("/:id", requireAuth, async (req, res) => {
+// Update category (creator or admin)
+router.put("/:id", protect, async (req, res, next) => {
   try {
     const category = await Category.findById(req.params.id);
-
     if (!category) return res.status(404).json({ message: "Not found" });
 
     const isOwner = category.userId === req.auth.userId;
-    const isAdmin = req.auth.sessionClaims?.metadata?.role === "admin";
+    const isAdmin = req.auth.claims.publicMetadata?.role === "admin";
 
-    if (!isOwner && !isAdmin)
-      return res.status(403).json({ message: "Forbidden" });
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
+
+    Object.assign(category, req.body);
+    await category.save();
+    res.json(category);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete category (creator or admin)
+router.delete("/:id", protect, async (req, res, next) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category) return res.status(404).json({ message: "Not found" });
+
+    const isOwner = category.userId === req.auth.userId;
+    const isAdmin = req.auth.claims.publicMetadata?.role === "admin";
+
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
 
     await category.deleteOne();
     res.json({ message: "Deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

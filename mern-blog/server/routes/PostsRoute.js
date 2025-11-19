@@ -1,9 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Post = require("../models/Post");
-const validate = require("../middleware/validate");
-const { createPostSchema } = require("../controllers/postValidation");
-const { protect, admin } = require("../middleware/auth");
+const { protect, admin } = require("../middleware/clerkAuth");
 
 // Get all posts (public)
 router.get("/", async (req, res, next) => {
@@ -20,7 +18,10 @@ router.get("/", async (req, res, next) => {
 // Get single post
 router.get("/:id", async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate("category", "name");
+    const post = await Post.findById(req.params.id).populate(
+      "category",
+      "name"
+    );
     if (!post) return res.status(404).json({ message: "Post not found" });
     res.json(post);
   } catch (err) {
@@ -29,7 +30,7 @@ router.get("/:id", async (req, res, next) => {
 });
 
 // Create post (authenticated users)
-router.post("/", protect, validate(createPostSchema), async (req, res, next) => {
+router.post("/", protect, async (req, res, next) => {
   try {
     const authorId = req.auth.userId;
     const post = await Post.create({ ...req.body, author: authorId });
@@ -39,15 +40,17 @@ router.post("/", protect, validate(createPostSchema), async (req, res, next) => 
   }
 });
 
-// Update post (only creator or admin)
-router.put("/:id", protect, validate(createPostSchema), async (req, res, next) => {
+// Update post (creator or admin)
+router.put("/:id", protect, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    if (post.author !== req.auth.userId && req.auth?.claims?.publicMetadata?.role !== "admin") {
+    const isOwner = post.author === req.auth.userId;
+    const isAdmin = req.auth.claims.publicMetadata?.role === "admin";
+
+    if (!isOwner && !isAdmin)
       return res.status(403).json({ message: "Not allowed to edit this post" });
-    }
 
     Object.assign(post, req.body);
     await post.save();
@@ -57,15 +60,19 @@ router.put("/:id", protect, validate(createPostSchema), async (req, res, next) =
   }
 });
 
-// Delete post (only creator or admin)
+// Delete post (creator or admin)
 router.delete("/:id", protect, async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    if (post.author !== req.auth.userId && req.auth?.claims?.publicMetadata?.role !== "admin") {
-      return res.status(403).json({ message: "Not allowed to delete this post" });
-    }
+    const isOwner = post.author === req.auth.userId;
+    const isAdmin = req.auth.claims.publicMetadata?.role === "admin";
+
+    if (!isOwner && !isAdmin)
+      return res
+        .status(403)
+        .json({ message: "Not allowed to delete this post" });
 
     await post.deleteOne();
     res.json({ message: "Post deleted successfully" });

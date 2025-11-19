@@ -1,25 +1,19 @@
-// routes/authRoutes.js
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth");
 const User = require("../models/User");
+const { protect } = require("../middleware/clerkAuth");
 
-/**
- * @route   GET /api/auth/profile
- * @desc    Get logged-in user profile
- * @access  Protected (Clerk)
- */
+// @route   GET /api/auth/profile
+// @desc    Get logged-in user profile
+// @access  Protected
 router.get("/profile", protect, async (req, res) => {
   try {
-    // req.auth.userId is provided by Clerk middleware
     const clerkUserId = req.auth.userId;
-
-    // Optional: fetch additional user info from DB if needed
     const user = await User.findOne({ clerkId: clerkUserId }).select("-password");
 
     res.json({
       clerkUserId,
-      user: user || null, // If you store user in DB
+      user: user || null,
     });
   } catch (err) {
     console.error(err);

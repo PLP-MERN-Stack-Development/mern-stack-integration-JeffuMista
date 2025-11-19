@@ -6,26 +6,36 @@ export const useBlogsApi = () => {
   const { getToken } = useAuth();
 
   const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
     headers: { "Content-Type": "application/json" },
   });
 
-  // Attach token to each request
+  // Attach Clerk JWT to every request
   api.interceptors.request.use(async (config) => {
-    const token = await getToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = await getToken({
+      // MUST match the token template configured in Clerk backend
+      template: "backend", 
+    });
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     return config;
   });
 
+  // Catch unauthorized responses
   api.interceptors.response.use(
     (res) => res,
     (err) => {
-      if (err.response?.status === 401) console.error("Unauthorized");
+      if (err.response?.status === 401) {
+        console.error("❌ Unauthorized — token missing or invalid");
+      }
       return Promise.reject(err);
     }
   );
 
-  // Posts
+  // ------- POST ROUTES -------
   const posts = {
     getAll: (page = 1, limit = 10, category = null) => {
       let url = `/posts?page=${page}&limit=${limit}`;
@@ -38,16 +48,15 @@ export const useBlogsApi = () => {
     delete: (id) => api.delete(`/posts/${id}`).then((res) => res.data),
   };
 
-  // Categories
+  // ------- CATEGORY ROUTES -------
   const categories = {
     getAll: () => api.get("/categories").then((res) => res.data),
     create: (data) => api.post("/categories", data).then((res) => res.data),
-    update: (id, data) =>
-      api.put(`/categories/${id}`, data).then((res) => res.data),
+    update: (id, data) => api.put(`/categories/${id}`, data).then((res) => res.data),
     delete: (id) => api.delete(`/categories/${id}`).then((res) => res.data),
   };
 
-  // Auth
+  // ------- AUTH ROUTES -------
   const auth = {
     getProfile: () => api.get("/auth/profile").then((res) => res.data),
   };
